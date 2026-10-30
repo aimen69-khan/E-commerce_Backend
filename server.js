@@ -39,6 +39,10 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'API is running' });
 });
 
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Server Is Working' });
+});
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
