@@ -16,7 +16,7 @@ const app = express();
 // =====================================
 
 const allowedOrigins = [
-  'https://react-e-commerce-three-ruby.vercel.app',
+  'https://react-e-commerce-three-rho-ruby.vercel.app',
   'https://dashboard-01-smoky.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',

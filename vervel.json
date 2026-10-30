@@ -1,4 +1,3 @@
-
 {
   "version": 2,
   "builds": [
@@ -8,6 +7,15 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://react-e-commerce-three-rho-ruby.vercel.app",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Requested-With"
+      },
+      "dest": "server.js"
+    },
     {
       "src": "/(.*)",
       "dest": "server.js"
