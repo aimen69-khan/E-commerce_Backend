@@ -11,9 +11,9 @@ dotenv.config();
 
 const app = express();
 
-// ==========================================
-// 1. CORS CONFIGURATION
-// ==========================================
+// =====================================
+// CORS CONFIGURATION
+// =====================================
 
 const allowedOrigins = [
   'https://react-e-commerce-three-ruby.vercel.app',
@@ -23,33 +23,25 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
   ...(process.env.CLIENT_URL || '').split(','),
+  ...(process.env.ADMIN_URL || '').split(','),
   ...(process.env.CORS_ORIGINS || '').split(',')
-]
-  .map(origin => origin.trim().replace(/\/+$/, ''))
-  .filter(Boolean);
+].map(url => url.trim().replace(/\/+$/, '')).filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests without an Origin header (Postman, server-to-server)
-    if (!origin) {
+    if (!origin || allowedOrigins.includes(origin.replace(/\/+$/, ''))) {
       return callback(null, true);
     }
 
-    const normalizedOrigin = origin.replace(/\/+$/, '');
-
-    if (allowedOrigins.includes(normalizedOrigin)) {
-      return callback(null, true);
-    }
-
-    console.error('CORS blocked origin:', origin);
-
-    return callback(new Error('CORS: Origin not allowed'));
+    console.error('CORS BLOCKED:', origin);
+    return callback(new Error('Origin not allowed by CORS'));
   },
 
   credentials: true,
 
   methods: [
     'GET',
+    'HEAD',
     'POST',
     'PUT',
     'PATCH',
@@ -66,37 +58,69 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// CORS MUST run before all API routes and middleware
+// CORS FIRST
 app.use(cors(corsOptions));
-
-// Handle browser preflight requests
 app.options('*', cors(corsOptions));
 
-// ==========================================
-// 2. BODY PARSERS
-// ==========================================
+// =====================================
+// BODY PARSERS
+// =====================================
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ==========================================
-// 3. STATIC FILES
-// ==========================================
+// =====================================
+// STATIC FILES
+// =====================================
 
-app.use(
-  '/uploads',
-  express.static(path.join(__dirname, 'uploads'))
-);
+app.use('/uploads', express.static(
+  path.join(__dirname, 'uploads')
+));
 
-// ==========================================
-// 4. DATABASE CONNECTION
-// ==========================================
+// =====================================
+// HEALTH CHECK
+// =====================================
 
-connectDB();
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is running'
+  });
+});
 
-// ==========================================
-// 5. API ROUTES
-// ==========================================
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend server is working'
+  });
+});
+
+// =====================================
+// MONGODB CONNECTION
+// =====================================
+
+let dbConnectionPromise;
+
+app.use(async (req, res, next) => {
+  try {
+    if (!dbConnectionPromise) {
+      dbConnectionPromise = connectDB().catch(error => {
+        dbConnectionPromise = null;
+        throw error;
+      });
+    }
+
+    await dbConnectionPromise;
+    next();
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =====================================
+// API ROUTES
+// =====================================
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
@@ -104,32 +128,9 @@ app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 
-// ==========================================
-// 6. HEALTH CHECK
-// ==========================================
-
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API is running',
-    cors: 'enabled'
-  });
-});
-
-// ==========================================
-// 7. ROOT ROUTE
-// ==========================================
-
-app.get('/', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Backend server is working'
-  });
-});
-
-// ==========================================
-// 8. 404 HANDLER
-// ==========================================
+// =====================================
+// 404 HANDLER
+// =====================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -138,10 +139,22 @@ app.use((req, res) => {
   });
 });
 
-// ==========================================
-// 9. ERROR HANDLER
-// ==========================================
+// =====================================
+// ERROR HANDLER
+// =====================================
 
 app.use(errorHandler);
+
+// =====================================
+// SERVER START
+// =====================================
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
