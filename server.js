@@ -6,26 +6,41 @@ const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 dotenv.config();
-connectDB();
 
 const app = express();
 
 
+connectDB();
+
+
+const allowedOrigins = [
+  'https://react-e-commerce-three-ruby.vercel.app',
+  'https://dashboard-01-smoky.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+
+
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL,
-      process.env.ADMIN_URL,
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+
+app.options('*', cors());
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -59,8 +74,5 @@ app.get('/', (req, res) => {
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
